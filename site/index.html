@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>财务报销审核 Agent · 演示</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --border: #e5e7eb;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --primary: #2563eb;
+    --green: #16a34a;
+    --green-bg: #f0fdf4;
+    --red: #dc2626;
+    --red-bg: #fef2f2;
+    --amber: #d97706;
+    --amber-bg: #fffbeb;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+    color: #fff;
+    padding: 22px 32px;
+  }
+  header h1 { font-size: 22px; font-weight: 700; }
+  header p { font-size: 13px; opacity: .85; margin-top: 4px; }
+  .stats {
+    display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap;
+  }
+  .stat {
+    background: rgba(255,255,255,.12);
+    border-radius: 10px; padding: 10px 18px;
+  }
+  .stat .num { font-size: 20px; font-weight: 700; }
+  .stat .lbl { font-size: 12px; opacity: .85; }
+  main {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+    padding: 24px 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .panel { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .panel h2 { font-size: 15px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  #invoice-list { padding: 12px; }
+  .inv-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 10px; cursor: pointer;
+    border: 1px solid transparent; margin-bottom: 6px;
+    transition: all .15s;
+  }
+  .inv-item:hover { background: #f3f4f6; }
+  .inv-item.active { border-color: var(--primary); background: #eff6ff; }
+  .inv-item img { width: 52px; height: 38px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); background:#fff; }
+  .inv-item .name { font-size: 13px; font-weight: 600; }
+  .inv-item .sub { font-size: 11px; color: var(--muted); }
+  #detail { padding: 0 20px 20px; }
+  .invoice-preview { margin: 16px 0; text-align: center; }
+  .invoice-preview img { max-width: 100%; max-height: 360px; border-radius: 10px; border: 1px solid var(--border); }
+  .note-switch { display: flex; gap: 8px; margin: 14px 0; flex-wrap: wrap; }
+  .note-switch button {
+    padding: 6px 14px; border-radius: 999px; border: 1px solid var(--border);
+    background: #fff; cursor: pointer; font-size: 13px;
+  }
+  .note-switch button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .stage { border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+  .stage-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px; background: #fafafa; font-weight: 600; font-size: 13px;
+  }
+  .stage-body { padding: 12px 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; width: 40%; }
+  .rule-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; font-size: 13px; }
+  .rule-ok { color: var(--green); font-weight: 700; }
+  .rule-bad { color: var(--red); font-weight: 700; }
+  .rule-ref { color: var(--muted); font-size: 12px; margin-left: 4px; }
+  .block-reason {
+    margin: 6px 0 0 24px; padding: 6px 10px; border-radius: 6px;
+    background: var(--red-bg); color: var(--red); font-size: 12px;
+  }
+  .verdict { padding: 14px 16px; border-radius: 10px; font-size: 14px; font-weight: 700; margin-top: 4px; }
+  .verdict.pass { background: var(--green-bg); color: var(--green); }
+  .verdict.block { background: var(--red-bg); color: var(--red); }
+  .verdict.warn { background: var(--amber-bg); color: var(--amber); }
+  .badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:12px; font-weight:600; }
+  .badge.pass { background: var(--green-bg); color: var(--green); }
+  .badge.block { background: var(--red-bg); color: var(--red); }
+  .badge.warn { background: var(--amber-bg); color: var(--amber); }
+  .badge.gray { background: #f3f4f6; color: var(--muted); }
+  .empty { color: var(--muted); text-align:center; padding: 40px; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧾 财务报销审核 Agent</h1>
+  <p>发票识别 → 硬规则拦截 → 制度条款审核 → 凭证生成 · 全程审计留痕</p>
+  <div class="stats" id="stats"></div>
+</header>
+<main>
+  <aside class="panel">
+    <h2>演示场景</h2>
+    <div id="invoice-list"></div>
+  </aside>
+  <section class="panel" id="detail-panel">
+    <div id="detail"><div class="empty">加载中…</div></div>
+  </section>
+</main>
+
+<script>
+const dataUrl = "results.json";
+let scenes = [];
+
+fetch(dataUrl)
+  .then(r => r.json())
+  .then(d => { scenes = d; init(); })
+  .catch(e => {
+    document.getElementById("detail").innerHTML =
+      '<div class="empty">加载演示数据失败：' + e.message + '</div>';
+  });
+
+function init() {
+  renderStats();
+  renderList();
+  selectScene(scenes[0].id);
+}
+
+function renderStats() {
+  let pass = 0, block = 0, warn = 0, total = 0;
+  scenes.forEach(s => {
+    const rs = s.variants ? s.variants.map(v => v.result) : [s.result];
+    rs.forEach(r => {
+      total++;
+      if (r.passed) pass++;
+      else if (r.blocked.length) block++;
+      else warn++;
+    });
+  });
+  document.getElementById("stats").innerHTML =
+    stat(total, "演示场景") + stat(pass, "通过") + stat(block, "拦截") + stat(warn, "退回/复核");
+}
+function stat(n, l) { return '<div class="stat"><div class="num">' + n + '</div><div class="lbl">' + l + '</div></div>'; }
+
+function renderList() {
+  const list = document.getElementById("invoice-list");
+  list.innerHTML = "";
+  scenes.forEach(s => {
+    const el = document.createElement("div");
+    el.className = "inv-item";
+    el.id = "inv-" + s.id;
+    el.innerHTML = '<img src="invoices/' + s.file + '" alt=""><div><div class="name">' + s.label + '</div><div class="sub">' + s.file + '</div></div>';
+    el.onclick = () => selectScene(s.id);
+    list.appendChild(el);
+  });
+}
+
+function selectScene(id) {
+  document.querySelectorAll(".inv-item").forEach(e => e.classList.remove("active"));
+  document.getElementById("inv-" + id).classList.add("active");
+  const s = scenes.find(x => x.id === id);
+  renderScene(s);
+}
+
+function renderScene(s) {
+  const d = document.getElementById("detail");
+  d.innerHTML = '<div class="invoice-preview"><img src="invoices/' + s.file + '"></div>';
+  if (s.variants) renderVariant(s, 0);
+  else renderAudit(s.result, d);
+}
+
+function renderVariant(s, idx) {
+  const d = document.getElementById("detail");
+  let html = '<div class="invoice-preview"><img src="invoices/' + s.file + '"></div>';
+  html += '<div class="note-switch">' + s.variants.map((v, i) =>
+    '<button class="' + (i === idx ? 'active' : '') + '" onclick="switchVariant(\'' + s.id + '\',' + i + ')">' + v.note_label + '</button>'
+  ).join('') + '</div>';
+  d.innerHTML = html;
+  renderAudit(s.variants[idx].result, d);
+}
+
+function switchVariant(id, i) {
+  const s = scenes.find(x => x.id === id);
+  renderVariant(s, i);
+}
+
+function renderAudit(r, container) {
+  // 发票预览图放在 detail 顶部（由调用方负责），这里追加流程
+  r.audit.forEach(step => {
+    container.appendChild(renderStage(step));
+  });
+  // 结论横幅
+  let v;
+  if (r.passed) v = '<div class="verdict pass">🎉 审核通过，已自动生成记账凭证</div>';
+  else if (r.blocked.length) v = '<div class="verdict block">🛑 被硬规则拦截，共 ' + r.blocked.length + ' 条</div>';
+  else v = '<div class="verdict warn">⚠️ 制度条款审核：' + (r.soft && r.soft["结论"] || "需人工复核") + '</div>';
+  container.insertAdjacentHTML("beforeend", v);
+}
+
+function renderStage(step) {
+  const wrap = document.createElement("div");
+  wrap.className = "stage";
+  const title = step["阶段"];
+  const status = step["状态"];
+  const badge = status === "通过" || status === "完成" ? "pass" : (status === "拦截" ? "block" : "warn");
+  let body = "";
+  if (title.indexOf("识别") >= 0) {
+    body = fieldTable(step["明细"]);
+  } else if (title.indexOf("硬规则") >= 0) {
+    body = step["明细"].map(ruleRow).join("");
+  } else if (title.indexOf("制度") >= 0) {
+    const s = step["明细"] || {};
+    body = '<table><tr><th>结论</th><td><span class="badge ' + badge + '">' + (s["结论"] || "-") + '</span></td></tr>' +
+           '<tr><th>依据条款</th><td>' + (s["依据条款"] || "无") + '</td></tr>' +
+           '<tr><th>说明</th><td>' + (s["说明"] || "-") + '</td></tr></table>';
+  } else if (title.indexOf("凭证") >= 0) {
+    const v = step["明细"] || {};
+    body = '<table><tr><th>凭证字号</th><td>' + v["凭证字号"] + '</td></tr>' +
+           '<tr><th>日期 / 摘要</th><td>' + v["日期"] + ' / ' + v["摘要"] + '</td></tr>' +
+           '<tr><th>借方</th><td>' + v["借方"] + '</td></tr>' +
+           '<tr><th>贷方</th><td>' + v["贷方"] + '</td></tr></table>';
+  }
+  wrap.innerHTML = '<div class="stage-head"><span class="badge ' + badge + '">' + status + '</span>' + title + '</div>' +
+                   '<div class="stage-body">' + body + '</div>';
+  return wrap;
+}
+
+function fieldTable(fields) {
+  const keys = [["发票号码","发票号码"],["开票日期","开票日期"],["购买方名称","购买方名称"],["购买方税号","购买方税号"],["项目名称","项目名称"],["金额","金额"],["税率","税率"],["税额","税额"],["价税合计","价税合计"],["销售方名称","销售方名称"]];
+  return '<table>' + keys.map(k => '<tr><th>' + k[0] + '</th><td>' + (fields[k[1]] ?? "-") + '</td></tr>').join('') + '</table>';
+}
+
+function ruleRow(r) {
+  const ok = r["status"] === "pass";
+  let html = '<div class="rule-row"><span class="' + (ok ? 'rule-ok' : 'rule-bad') + '">' + (ok ? '✅' : '🛑') + '</span>' +
+    '<div><b>' + r["rule"] + '</b> — ' + r["detail"] + '<span class="rule-ref">依据：' + r["reference"] + '</span>';
+  if (!ok) html += '<div class="block-reason">拦截原因：' + r["reason"] + '</div>';
+  html += '</div></div>';
+  return html;
+}
+</script>
+</body>
+</html>
